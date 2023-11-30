@@ -1,0 +1,100 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+    provider = "prisma-client-js"
+}
+
+datasource db {
+    provider = "mongodb"
+    url      = env("DATABASE_URL")
+}
+
+// Necessary for Next auth
+model Account {
+    id                String  @id @default(auto()) @map("_id") @db.ObjectId
+    userId            String  @db.ObjectId
+    type              String
+    provider          String
+    providerAccountId String
+    refresh_token     String?
+    access_token      String?
+    expires_at        Int?
+    token_type        String?
+    scope             String?
+    id_token          String? 
+    session_state     String?
+    user              User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+    @@unique([provider, providerAccountId])
+}
+
+model User {
+    id            String    @id @default(auto()) @map("_id") @db.ObjectId
+    name          String?
+    email         String?   @unique
+    emailVerified DateTime?
+    image         String?
+    accounts      Account[]
+    lists         List[]
+    starred       UserStarredItem[]
+    items         Item[]
+    shares        Share[]
+}
+
+model List {
+    id          String   @id @default(auto()) @map("_id") @db.ObjectId
+    userId      String   @db.ObjectId
+    name        String
+    locked      Boolean  @default(false)
+
+    user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+    items       Item[]
+    shares      Share[]
+}
+
+model Item {
+    id          String   @id @default(auto()) @map("_id") @db.ObjectId
+    userId      String   @db.ObjectId
+    parentId    String?  @db.ObjectId 
+    listId      String   @db.ObjectId
+    name        String
+    completed   Boolean  @default(false)
+    price       Float?
+
+    user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+    list        List     @relation(fields: [listId], references: [id], onDelete: Cascade)
+    parent      Item?    @relation("ItemChildren", fields: [parentId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+    children    Item[]   @relation("ItemChildren")
+    userStarred UserStarredItem[]
+
+    createdAt   DateTime @default(now())
+    updatedAt   DateTime @updatedAt
+}
+
+model UserStarredItem {
+    id          String   @id @default(auto()) @map("_id") @db.ObjectId
+    userId      String   @db.ObjectId
+    itemId      String   @db.ObjectId
+    createdAt   DateTime @default(now())
+
+    user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+    item        Item     @relation(fields: [itemId], references: [id], onDelete: Cascade)
+}
+
+model Share {
+    id          String   @id @default(auto()) @map("_id") @db.ObjectId
+    userId      String   @db.ObjectId
+    listId      String   @db.ObjectId
+    type        ShareType @default(READ)
+    createdAt   DateTime @default(now())
+
+    user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+    list        List     @relation(fields: [listId], references: [id], onDelete: Cascade)
+}
+
+enum ShareType {
+    READ
+    WRITE
+}
+
